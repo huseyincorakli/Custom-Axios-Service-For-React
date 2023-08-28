@@ -1,27 +1,94 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-   parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-   },
+## HttpClientService.ts
+```jsx
+     import axios, { AxiosHeaders } from 'axios'
+   export class RequestParameters {
+       controller?: string;
+       action?: string;
+       queryString?: string;
+       headers?: AxiosHeaders;
+       baseUrl?: string;
+       fullEndPoint?: string
+   }
+   
+   
+   export const HttpClientService = {
+       
+       url(requestParameters: Partial<RequestParameters>): string {
+           const mainUrl :string='https://jsonplaceholder.typicode.com';
+           return `${requestParameters.baseUrl ? requestParameters.baseUrl : mainUrl}/${requestParameters.controller}${requestParameters.action ? `/${requestParameters.action}` : ""}`;
+       },
+   
+       async get<T>(requestParameters: Partial<RequestParameters>, id?: string) {
+           let url: string = '';
+           if (requestParameters.fullEndPoint) {
+               url = requestParameters.fullEndPoint
+           }
+           else {
+               url = `${this.url(requestParameters)}${id ? `?id=${id}` : ''}${requestParameters.queryString ? `/${requestParameters.queryString}` : ''}`;
+               return  (await axios.get<T>(url, { headers: requestParameters.headers }))
+           }
+       }
+       //post()
+       //put()
+       //delete()
+      
+   } 
 ```
-
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+## HttpUserService.ts
+```jsx
+      import { HttpClientService } from "../httpClientService";
+   
+   
+   interface Response<T> {
+       data:Data<T>;
+       status:number;
+     }
+     interface Data<T> {
+       products:T[]
+     }
+   
+     
+   export const HttpUserService={
+       async read(  setState:React.Dispatch<React.SetStateAction<any>>,callBack?:()=>void){
+           await HttpClientService.get<Response<any>>({
+                controller:'todos'
+            }).then(response=>{
+               //check in case of response (status code , status text)
+               
+               setState(response.data);
+                
+            }).catch(err=>{
+               // check in case of error
+               alert(err.message);
+              
+            })
+            if(callBack!=undefined){
+                callBack();
+            }
+        },
+   }
+```
+## App.tsx
+```jsx
+   import { useEffect, useState } from "react"
+   import { HttpUserService } from "./http/http-user/httpUserService"
+   
+   
+   function App() {
+   const [user,setUser]=useState<any>([]);
+     useEffect(()=>{
+       HttpUserService.read(setUser,()=>{
+         //Let's say we have added users, we can call a method that will load users again from here
+         //or assuming we use a spinner, here the spinner can be deactivated
+       })
+     },[])
+     return (
+       <>
+         {user? user[0]?.id:'null'}
+       </>
+     )
+   }
+   
+   export default App
+```
